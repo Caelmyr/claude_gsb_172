@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>配置管理 Config — 分布式 MapReduce</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header id="app-nav"></header>
+  <main class="page">
+    <h1 class="page-title">配置管理 <span>Configuration</span></h1>
+    <p class="page-desc">集群参数与作业默认值。Cluster parameters and job defaults.</p>
+
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>集群参数 <span class="sub">Cluster parameters</span></h2>
+        <form id="cluster-form"></form>
+        <div class="mt flex">
+          <button class="btn primary" id="save-cluster">保存集群配置 Save cluster</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>作业默认值 <span class="sub">Job defaults</span></h2>
+        <form id="defaults-form"></form>
+        <div class="mt flex">
+          <button class="btn primary" id="save-defaults">保存默认值 Save defaults</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/pages/config.js"></script>
+</body>
+</html>

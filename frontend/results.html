@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>结果导出 Results — 分布式 MapReduce</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header id="app-nav"></header>
+  <main class="page">
+    <h1 class="page-title">结果查看与导出 <span>Results &amp; Export</span></h1>
+    <p class="page-desc">查看各分区结果并导出 JSON / CSV。Inspect partition results and export as JSON / CSV.</p>
+
+    <div class="flex between mb">
+      <div id="job-picker" style="min-width:280px"></div>
+      <div class="flex">
+        <a class="btn primary small" id="dl-json" href="#">导出 JSON</a>
+        <a class="btn small" id="dl-csv" href="#">导出 CSV</a>
+      </div>
+    </div>
+
+    <div class="stat-tiles" id="stats"></div>
+    <div class="grid cols-2 mt">
+      <div class="card"><h2>结果分区 <span class="sub">Partitions</span></h2><div id="partitions"></div></div>
+      <div class="card"><h2>结果预览 <span class="sub">Preview</span></h2><div id="preview"></div></div>
+    </div>
+  </main>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/pages/results.js"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>日志搜索 Logs — 分布式 MapReduce</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header id="app-nav"></header>
+  <main class="page">
+    <h1 class="page-title">日志聚合与搜索 <span>Log Aggregation &amp; Search</span></h1>
+    <p class="page-desc">跨 Worker 聚合的结构化日志，按关键词/阶段/级别过滤。Aggregated logs across workers, filtered by keyword / stage / level.</p>
+
+    <div class="flex wrap mb">
+      <div id="job-picker" style="min-width:260px"></div>
+      <input id="search" placeholder="搜索关键词 Search…" style="max-width:220px">
+      <select id="stage" style="max-width:140px">
+        <option value="">阶段 Stage: 全部 All</option>
+        <option value="master">master</option>
+        <option value="map">map</option>
+        <option value="shuffle">shuffle</option>
+        <option value="reduce">reduce</option>
+      </select>
+      <select id="level" style="max-width:130px">
+        <option value="">级别 Level: 全部 All</option>
+        <option value="INFO">INFO</option>
+        <option value="WARN">WARN</option>
+        <option value="ERROR">ERROR</option>
+        <option value="DEBUG">DEBUG</option>
+      </select>
+      <button class="btn small" id="refresh">刷新 Refresh</button>
+    </div>
+
+    <div class="card">
+      <div class="flex between mb">
+        <span class="small muted" id="log-count"></span>
+      </div>
+      <div class="log-view" id="logs"></div>
+    </div>
+  </main>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/pages/logs.js"></script>
+</body>
+</html>

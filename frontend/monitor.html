@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>作业监控 Monitor — 分布式 MapReduce</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header id="app-nav"></header>
+  <main class="page">
+    <h1 class="page-title">作业监控 <span>Job Monitoring</span></h1>
+    <p class="page-desc">阶段进度与任务状态实时跟踪。Live stage progress and per-task status.</p>
+
+    <div class="flex between mb">
+      <div id="job-picker" class="flex" style="min-width:280px"></div>
+      <button class="btn small" id="refresh">刷新 Refresh</button>
+    </div>
+
+    <div id="summary"></div>
+    <div class="card mt">
+      <h2>任务状态 <span class="sub">Task status</span>
+        <span class="pill-group" style="float:right" id="kind-filter"></span>
+      </h2>
+      <div id="tasks"></div>
+    </div>
+  </main>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/pages/monitor.js"></script>
+</body>
+</html>

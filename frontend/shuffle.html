@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shuffle 排序 — 分布式 MapReduce</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header id="app-nav"></header>
+  <main class="page">
+    <h1 class="page-title">Shuffle 与排序 <span>Shuffle &amp; Sort</span></h1>
+    <p class="page-desc">Map 输出按 key 哈希分区，Reduce 端拉取并归并排序。Map outputs are hash-partitioned, then pulled and merge-sorted by reducers.</p>
+
+    <div class="flex between mb">
+      <div id="job-picker" style="min-width:280px"></div>
+    </div>
+
+    <div class="stat-tiles" id="stats"></div>
+    <div class="card mt">
+      <h2>分区矩阵 <span class="sub">Partition matrix</span></h2>
+      <div id="matrix"></div>
+    </div>
+  </main>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/pages/shuffle.js"></script>
+</body>
+</html>

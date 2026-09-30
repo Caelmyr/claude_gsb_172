@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>分片管理 Shards — 分布式 MapReduce</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header id="app-nav"></header>
+  <main class="page">
+    <h1 class="page-title">分片管理 <span>Shard Management</span></h1>
+    <p class="page-desc">输入分片与 Map/Reduce 任务分配。Input shards and Map/Reduce task assignment.</p>
+
+    <div class="flex between mb">
+      <div id="job-picker" style="min-width:280px"></div>
+    </div>
+
+    <div class="grid cols-3">
+      <div class="card"><h2>输入分片 <span class="sub">Input shards</span></h2><div id="input-shards"></div></div>
+      <div class="card"><h2>Map 任务分配 <span class="sub">Map tasks</span></h2><div id="map-tasks"></div></div>
+      <div class="card"><h2>Reduce 任务分配 <span class="sub">Reduce tasks</span></h2><div id="reduce-tasks"></div></div>
+    </div>
+  </main>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/pages/shards.js"></script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>性能指标 Metrics — 分布式 MapReduce</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header id="app-nav"></header>
+  <main class="page">
+    <h1 class="page-title">性能指标 <span>Performance Metrics</span></h1>
+    <p class="page-desc">吞吐、延迟与资源占用。Throughput, latency and resource utilization.</p>
+
+    <div class="flex between mb">
+      <div id="job-picker" style="min-width:280px"></div>
+    </div>
+
+    <div class="stat-tiles" id="stats"></div>
+
+    <div class="grid cols-2 mt">
+      <div class="card">
+        <h2>任务吞吐 <span class="sub">Throughput (records/s)</span></h2>
+        <div class="chart-box"><canvas id="c-throughput" height="220"></canvas></div>
+        <div class="chart-legend" id="c-throughput-legend"></div>
+      </div>
+      <div class="card">
+        <h2>任务延迟 <span class="sub">Task latency (ms)</span></h2>
+        <div class="chart-box"><canvas id="c-latency" height="220"></canvas></div>
+        <div class="chart-legend" id="c-latency-legend"></div>
+      </div>
+    </div>
+
+    <div class="grid cols-2 mt">
+      <div class="card">
+        <h2>Worker 平均 CPU <span class="sub">Avg CPU per worker (%)</span></h2>
+        <div class="chart-box"><canvas id="c-worker-cpu" height="220"></canvas></div>
+        <div class="chart-legend" id="c-worker-cpu-legend"></div>
+      </div>
+      <div class="card">
+        <h2>资源时序 <span class="sub">CPU over time</span>
+          <select id="worker-sel" style="width:auto;float:right"></select>
+        </h2>
+        <div class="chart-box"><canvas id="c-resource" height="220"></canvas></div>
+        <div class="chart-legend" id="c-resource-legend"></div>
+      </div>
+    </div>
+  </main>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/pages/metrics.js"></script>
+</body>
+</html>

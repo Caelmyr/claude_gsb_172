@@ -1,0 +1,12 @@
+# Runtime JSON data (generated on first boot)
+data/
+*.jsonl
+*.tmp
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS
+.DS_Store

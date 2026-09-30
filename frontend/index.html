@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>总览 Overview — 分布式 MapReduce</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header id="app-nav"></header>
+  <main class="page">
+    <h1 class="page-title">集群总览 <span>Cluster Overview</span></h1>
+    <p class="page-desc">作业、节点与集群运行概况的一览视图。Overview of jobs, workers and cluster health.</p>
+
+    <div class="stat-tiles" id="stats"></div>
+
+    <div class="grid cols-2 mt">
+      <div class="card">
+        <h2>最近作业 <span class="sub">Recent jobs</span></h2>
+        <div id="recent-jobs"></div>
+      </div>
+      <div class="card">
+        <h2>节点状态 <span class="sub">Worker status</span></h2>
+        <div id="worker-summary"></div>
+      </div>
+    </div>
+  </main>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/pages/index.js"></script>
+</body>
+</html>

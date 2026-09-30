@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>故障恢复 Fault — 分布式 MapReduce</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header id="app-nav"></header>
+  <main class="page">
+    <h1 class="page-title">故障恢复与任务重试 <span>Fault Recovery &amp; Retry</span></h1>
+    <p class="page-desc">失败事件、重试历史与 Worker 死亡改派。Failure events, retry history and reassignment after worker loss.</p>
+
+    <div class="flex between mb">
+      <div id="job-picker" style="min-width:280px"></div>
+    </div>
+
+    <div class="stat-tiles" id="stats"></div>
+    <div class="card mt">
+      <h2>故障事件 <span class="sub">Fault events</span></h2>
+      <div id="faults"></div>
+    </div>
+  </main>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/pages/fault.js"></script>
+</body>
+</html>

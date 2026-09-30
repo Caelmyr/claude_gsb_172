@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>节点管理 Nodes — 分布式 MapReduce</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header id="app-nav"></header>
+  <main class="page">
+    <h1 class="page-title">节点管理 <span>Worker Nodes</span></h1>
+    <p class="page-desc">Worker 注册、心跳与实时负载。Worker registration, heartbeats and live load.</p>
+
+    <div class="stat-tiles" id="stats"></div>
+    <div class="card mt">
+      <h2>节点列表 <span class="sub">Worker list</span></h2>
+      <div id="workers"></div>
+    </div>
+  </main>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/pages/nodes.js"></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>作业提交 Submit — 分布式 MapReduce</title>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <header id="app-nav"></header>
+  <main class="page">
+    <h1 class="page-title">作业提交与配置 <span>Job Submission &amp; Configuration</span></h1>
+    <p class="page-desc">配置并提交一个 MapReduce 作业；支持内置示例与故障注入。Submit a MapReduce job; built-in presets and fault injection are supported.</p>
+
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>作业参数 <span class="sub">Job parameters</span></h2>
+        <form id="form">
+          <label>示例作业 Preset</label>
+          <select id="preset"></select>
+
+          <label>作业名称 Job name</label>
+          <input id="name" type="text" value="WordCount 词频统计" required>
+
+          <div class="row">
+            <div>
+              <label>Map 函数 Mapper</label>
+              <select id="mapper"></select>
+            </div>
+            <div>
+              <label>Reduce 函数 Reducer</label>
+              <select id="reducer"></select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Map 任务数 Map tasks</label>
+              <input id="num_map_tasks" type="number" min="1" max="200" value="8">
+            </div>
+            <div>
+              <label>Reduce 任务数 Reduce tasks</label>
+              <input id="num_reduce_tasks" type="number" min="1" max="100" value="4">
+            </div>
+            <div>
+              <label>输入行数 Input rows</label>
+              <input id="input_rows" type="number" min="10" max="1000000" value="12000">
+            </div>
+          </div>
+
+          <fieldset>
+            <legend>高级 Advanced</legend>
+            <label style="display:flex;align-items:center;gap:8px;margin:0">
+              <input id="simulate_failure" type="checkbox" style="width:auto">
+              故障注入 Fault injection（首轮任务模拟失败并自动重试 retry）
+            </label>
+          </fieldset>
+
+          <div class="mt flex">
+            <button class="btn primary" type="submit">提交作业 Submit Job</button>
+            <span class="hint">提交后跳转至监控页 After submit, open the Monitor page.</span>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>可用函数 <span class="sub">Available functions</span></h2>
+        <div id="func-list"></div>
+      </div>
+    </div>
+
+    <div class="card mt">
+      <h2>最近作业 <span class="sub">Recent jobs</span></h2>
+      <div id="recent"></div>
+    </div>
+  </main>
+  <script src="js/api.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/pages/submit.js"></script>
+</body>
+</html>
