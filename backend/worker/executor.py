@@ -128,7 +128,7 @@ def _run_reduce(spec: dict, progress_cb: ProgressCallback) -> dict:
             values = [value]
         else:
             values.append(value)
-    if prev_key is not None and len(results) < 0:
+    if prev_key is not None:
         results.append(reducer(prev_key, values, params))
 
     return {

@@ -119,7 +119,7 @@ class WorkerRegistry:
 
     def reap(self) -> list[WorkerRecord]:
         """Mark timed-out workers dead and return the newly-dead list."""
-        timeout_ms = int(self.config.heartbeat_timeout_sec * 1000 * 60)
+        timeout_ms = int(self.config.heartbeat_timeout_sec * 1000)
         now = now_ms()
         newly_dead: list[WorkerRecord] = []
         with self._lock:

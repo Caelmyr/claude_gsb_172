@@ -4,6 +4,9 @@ This module turns failures into *recoverable events*:
 
 * a failed task is retried up to ``max_attempts`` with exponential backoff, and
   only then marks the job failed;
+* a task whose current attempt runs longer than ``task_timeout_sec`` is
+  cancelled on its worker and fed through the same retry/fail path, so a stuck
+  task can never wedge its job forever;
 * a worker that stops heartbeating has every in-flight task reassigned to other
   workers (the original is treated as a lost attempt, not a permanent failure);
 * stragglers — tasks running much longer than the median — are detected and a
@@ -62,13 +65,14 @@ class FaultTolerance:
         return event
 
     # ------------------------------------------------------------------
-    def handle_task_failure(self, job: Job, task: Task, error: str, worker_id: str = "") -> bool:
+    def handle_task_failure(self, job: Job, task: Task, error: str, worker_id: str = "",
+                            kind: str = "task_failed") -> bool:
         """Return True if the task was queued for retry, False if the job is doomed."""
         max_attempts = int(self.config.max_attempts)
         if task.attempts < max_attempts:
-            backoff_ms = int(self.config.retry_backoff_base_sec * (2 ** task.attempts))
+            backoff_ms = int(self.config.retry_backoff_base_sec * 1000 * (2 ** task.attempts))
             self._record(
-                job, "task_failed", f"task {task.task_id} failed ({error}); retrying",
+                job, kind, f"task {task.task_id} failed ({error}); retrying",
                 task=task, worker_id=worker_id,
                 detail={"attempt": task.attempts + 1, "max_attempts": max_attempts,
                         "backoff_ms": backoff_ms},
@@ -78,12 +82,15 @@ class FaultTolerance:
                 status=C.TASK_RETRYING, worker_id=None, error=error,
                 attempts=task.attempts + 1,
                 retry_after_ms=now_ms() + backoff_ms,
+                # Reset the per-attempt clock so the next attempt's timeout is
+                # measured from its own dispatch, not from this failed one.
+                started_ms=0, assigned_ms=0,
                 progress=0.0, records_processed=0, records_emitted=0,
             )
             return True
 
         self._record(
-            job, "task_failed", f"task {task.task_id} exhausted {max_attempts} attempts",
+            job, kind, f"task {task.task_id} exhausted {max_attempts} attempts",
             task=task, worker_id=worker_id,
         )
         self.job_manager.update_task(job.job_id, task.task_id, status=C.TASK_FAILED,
@@ -108,9 +115,33 @@ class FaultTolerance:
                         job.job_id, task.task_id,
                         status=C.TASK_RETRYING, worker_id=None,
                         error=f"worker {worker.name} died", retry_after_ms=0,
+                        started_ms=0, assigned_ms=0,
                     )
                     reassigned += 1
         return reassigned
+
+    # ------------------------------------------------------------------
+    def find_timed_out(self, job: Job) -> list[Task]:
+        """Tasks whose current attempt has exceeded ``task_timeout_sec``.
+
+        The clock is per attempt: ``started_ms`` (first progress report) with
+        ``assigned_ms`` (dispatch time) as fallback for tasks a worker never
+        acknowledged.  Both are reset whenever a task is re-queued, so a fresh
+        attempt never inherits the previous attempt's elapsed time — timeouts
+        fire neither late nor early.
+        """
+        timeout_ms = int(float(self.config.task_timeout_sec) * 1000)
+        if timeout_ms <= 0:
+            return []
+        now = now_ms()
+        timed_out: list[Task] = []
+        for task in self.job_manager.tasks_for(job.job_id):
+            if task.status not in (C.TASK_ASSIGNED, C.TASK_RUNNING):
+                continue
+            start = task.started_ms or task.assigned_ms
+            if start and now - start > timeout_ms:
+                timed_out.append(task)
+        return timed_out
 
     def find_stragglers(self, job: Job) -> list[Task]:
         """Tasks running far longer than the median, still awaiting a duplicate."""

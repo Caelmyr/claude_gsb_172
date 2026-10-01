@@ -178,7 +178,7 @@ class FaultEvent:
     job_id: str
     task_id: str = ""
     worker_id: str = ""
-    kind: str = "task_failed"        # task_failed | worker_dead | reassigned | speculation
+    kind: str = "task_failed"        # task_failed | task_timeout | worker_dead | reassigned | speculation
     message: str = ""
     attempt: int = 0
     created_ms: int = 0

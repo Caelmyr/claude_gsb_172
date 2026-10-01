@@ -6,6 +6,7 @@ let currentJob = '';
 
 const KIND_LABEL = {
   task_failed: '任务失败 Task failed',
+  task_timeout: '任务超时 Task timeout',
   worker_dead: 'Worker 失联 Worker dead',
   reassigned: '任务改派 Reassigned',
   speculation: '推测执行 Speculation',
@@ -22,6 +23,7 @@ async function render() {
   document.getElementById('stats').innerHTML = [
     { label: '故障总数 Total faults', value: faults.length, cls: faults.length ? 'bad' : 'good' },
     { label: '任务失败 Task failed', value: byKind.task_failed || 0 },
+    { label: '任务超时 Timeout', value: byKind.task_timeout || 0 },
     { label: 'Worker 失联 Dead', value: byKind.worker_dead || 0 },
     { label: '重试/改派 Reassigned', value: (byKind.reassigned || 0) },
     { label: '推测执行 Speculation', value: byKind.speculation || 0 },

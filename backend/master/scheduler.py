@@ -4,9 +4,12 @@ A single background thread runs a ``tick`` loop that:
 
 1. reaps workers whose heartbeat timed out (delegating reassignment to
    ``FaultTolerance``);
-2. for each active job, dispatches pending map/reduce tasks to the least-loaded
+2. cancels tasks whose current attempt exceeded ``task_timeout_sec`` and
+   routes them through the retry/fail path, so a stuck task is always
+   retried or fails its job — never wedges it forever;
+3. for each active job, dispatches pending map/reduce tasks to the least-loaded
    alive worker and advances the stage state machine;
-3. checks for stragglers and launches speculative duplicates.
+4. checks for stragglers and launches speculative duplicates.
 
 Task *completions* arrive asynchronously over HTTP (from workers) and are
 handled by ``on_task_complete`` / ``on_task_status``, which mutate state through
@@ -92,9 +95,28 @@ class Scheduler:
             if job.is_terminal:
                 continue
             try:
+                self._reap_timed_out_tasks(job)
                 self._advance(job)
             except Exception:  # noqa: BLE001
                 traceback.print_exc()
+
+    # ------------------------------------------------------------------
+    def _reap_timed_out_tasks(self, job: Job) -> None:
+        """Cancel attempts stuck past ``task_timeout_sec`` and retry/fail them."""
+        for task in self.fault_tolerance.find_timed_out(job):
+            worker_id = task.worker_id or ""
+            worker = self.registry.get(worker_id) if worker_id else None
+            if worker is not None:
+                try:  # best-effort kill of the stuck attempt on its worker
+                    self.client.post(f"{worker.address}/task/cancel",
+                                     {"task_id": task.task_id}, timeout=2.0)
+                except Exception:  # noqa: BLE001
+                    pass
+            self.fault_tolerance.handle_task_failure(
+                job, task,
+                f"timed out after {float(self.config.task_timeout_sec):.0f}s",
+                worker_id, kind="task_timeout",
+            )
 
     # ------------------------------------------------------------------
     def _advance(self, job: Job) -> None:
@@ -237,8 +259,8 @@ class Scheduler:
         if job is None:
             return
         task = self.job_manager.get_task(job.job_id, payload.get("task_id", ""))
-        if task is None or task.status == C.TASK_SUCCEEDED:
-            return
+        if task is None or task.status in (C.TASK_SUCCEEDED, C.TASK_FAILED, C.TASK_RETRYING):
+            return  # terminal or already re-queued: a stale attempt must not resurrect it
 
         def apply(t: Task) -> None:
             if t.status in (C.TASK_PENDING, C.TASK_RETRYING, C.TASK_ASSIGNED):
@@ -264,6 +286,9 @@ class Scheduler:
         status = payload.get("status", C.TASK_FAILED)
 
         if status != C.TASK_SUCCEEDED:
+            if task.status in (C.TASK_RETRYING, C.TASK_FAILED):
+                return  # stale failure from an attempt already handled
+                        # (e.g. the "cancelled" report after a timeout kill)
             self.registry.task_finished(worker_id, success=False)
             self.fault_tolerance.handle_task_failure(job, task, payload.get("error", ""), worker_id)
             return
