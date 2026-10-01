@@ -324,8 +324,6 @@ class Master:
             # Mutate the shared config object in place so the scheduler (which
             # holds the same reference) sees the new values immediately.
             for field in ClusterConfig.__dataclass_fields__:
-                if field == "scheduler_tick_sec":
-                    continue
                 setattr(self.config, field, getattr(incoming, field))
             self.config_manager.save_cluster(self.config)
             return jsonify(self.config.to_dict())

@@ -7,7 +7,9 @@ worker executes it in one of two ways:
 * ``ThreadBackend`` — runs the task in a daemon thread, reporting progress
   directly.  Used for debugging and for tiny clusters.
 * ``ProcessBackend`` (default) — forks a ``multiprocessing`` child that performs
-  the real CPU work.  The child communicates with the parent **only** through
+  the real CPU work.  The parent watches the per-execution deadline supplied by
+  the Master and terminates the child (``SIGTERM`` then ``SIGKILL``) if a task
+  gets stuck.  The child communicates with the parent **only** through
   atomic JSON files (``progress.json`` / ``result.json``); the parent polls those
   files and forwards progress to the Master.  This is what makes multi-process
   state consistency a first-class property: there is no shared mutable memory,
@@ -206,7 +208,18 @@ class Executor:
 
     def running_task_ids(self) -> list[str]:
         with self._lock:
-            return list(self._handles.keys())
+            return [h["spec"]["task_id"] for h in self._handles.values()]
+
+    def _get_handle(self, execution_id: str = "", job_id: str = "", task_id: str = "") -> Optional[dict]:
+        with self._lock:
+            if execution_id and execution_id in self._handles:
+                return self._handles[execution_id]
+            candidates = [
+                h for h in self._handles.values()
+                if h["spec"].get("task_id") == task_id
+                and (not job_id or h["spec"].get("job_id") == job_id)
+            ]
+            return candidates[-1] if candidates else None
 
     # -- dispatch -----------------------------------------------------
     def start_task(self, spec: dict) -> bool:
@@ -217,21 +230,31 @@ class Executor:
         spec.setdefault("spill_records", int(getattr(self.config, "shuffle_spill_records", 20000)))
         spec.setdefault("tmp_dir", self._tmp_dir)
         with self._lock:
-            if task_id in self._handles:
+            timeout_sec = max(0.05, float(spec.get("timeout_sec") or self.config.task_timeout_sec))
+            execution_id = str(spec.get("execution_id") or f"{task_id}-{now_ms()}")
+            if execution_id in self._handles:
                 return False
-            self._handles[task_id] = {
+            spec["execution_id"] = execution_id
+            handle = {
                 "spec": spec,
+                "execution_id": execution_id,
                 "started_ms": now_ms(),
                 "cancel": threading.Event(),
                 "last_status_ms": 0,
+                "deadline": time.monotonic() + timeout_sec,
+                "timeout_sec": timeout_sec,
             }
+            self._handles[execution_id] = handle
+        execution_id = spec["execution_id"]
         runner = self._run_process if self.exec_mode == "process" else self._run_thread
-        threading.Thread(target=runner, args=(task_id,), daemon=True, name=f"task-{task_id}").start()
+        threading.Thread(
+            target=runner, args=(execution_id,), daemon=True,
+            name=f"task-{execution_id}",
+        ).start()
         return True
 
-    def cancel(self, task_id: str) -> bool:
-        with self._lock:
-            handle = self._handles.get(task_id)
+    def cancel(self, task_id: str, execution_id: str = "", job_id: str = "") -> bool:
+        handle = self._get_handle(execution_id=execution_id, job_id=job_id, task_id=task_id)
         if handle:
             handle["cancel"].set()
             return True
@@ -242,30 +265,44 @@ class Executor:
             self.cancel(task_id)
 
     # -- thread backend ----------------------------------------------
-    def _run_thread(self, task_id: str) -> None:
-        handle = self._handles[task_id]
+    def _run_thread(self, execution_id: str) -> None:
+        with self._lock:
+            handle = self._handles.get(execution_id)
+        if handle is None:
+            return
         spec = handle["spec"]
+        result: dict = {}
 
         def progress_cb(progress: float, processed: int, emitted: int) -> None:
+            if time.monotonic() >= handle["deadline"]:
+                raise TimeoutError(f"timed out after {handle['timeout_sec']:g}s")
             self._post_status(spec, handle, progress, processed, emitted)
 
         try:
-            result = _execute_task(spec, self.data_root, progress_cb)
-            result["status"] = C.TASK_SUCCEEDED
-            self._complete(task_id, result)
+            value = _execute_task(spec, self.data_root, progress_cb)
+            value["status"] = C.TASK_SUCCEEDED
+            result = value
         except Exception as exc:  # noqa: BLE001
-            self._complete(task_id, {
+            if time.monotonic() >= handle["deadline"]:
+                handle["cancel"].set()
+            result = {
                 "status": C.TASK_FAILED,
                 "error": f"{type(exc).__name__}: {exc}",
-            })
+                "timed_out": time.monotonic() >= handle["deadline"],
+            }
         finally:
-            self._remove(task_id)
+            if self._handles.get(execution_id) is handle:
+                self._complete(execution_id, result)
+                self._remove(execution_id)
 
     # -- process backend ---------------------------------------------
-    def _run_process(self, task_id: str) -> None:
-        handle = self._handles[task_id]
+    def _run_process(self, execution_id: str) -> None:
+        with self._lock:
+            handle = self._handles.get(execution_id)
+        if handle is None:
+            return
         spec = handle["spec"]
-        work_dir = os.path.join(self._tmp_dir, f"task-{task_id}-{now_ms()}")
+        work_dir = os.path.join(self._tmp_dir, f"task-{execution_id}")
         os.makedirs(work_dir, exist_ok=True)
         progress_path = os.path.join(work_dir, "progress.json")
         result_path = os.path.join(work_dir, "result.json")
@@ -277,18 +314,29 @@ class Executor:
         proc = ctx.Process(
             target=_execute_in_process,
             args=(spec, self.data_root, progress_path, result_path),
-            name=f"mr-{task_id}",
+            name=f"mr-{execution_id}",
         )
         proc.start()
+        timed_out = False
 
         while proc.is_alive():
-            if handle["cancel"].is_set():
+            now = time.monotonic()
+            if handle["cancel"].is_set() or now >= handle["deadline"]:
+                timed_out = now >= handle["deadline"] and not handle["cancel"].is_set()
                 proc.terminate()
                 proc.join(timeout=2.0)
-                self._complete(task_id, {"status": C.TASK_FAILED, "error": "cancelled"})
-                self._remove(task_id)
+                if proc.is_alive() and hasattr(proc, "kill"):
+                    proc.kill()
+                    proc.join(timeout=2.0)
+                error = f"timed out after {handle['timeout_sec']:g}s" if timed_out else "cancelled"
+                self._complete(execution_id, {
+                    "status": C.TASK_FAILED,
+                    "error": error,
+                    "timed_out": timed_out,
+                })
+                self._remove(execution_id)
                 return
-            time.sleep(0.25)
+            time.sleep(min(0.25, max(0.01, handle["deadline"] - now)))
             prog = read_json(progress_path)
             if prog:
                 self._post_status(spec, handle, prog.get("progress", 0.0),
@@ -296,8 +344,13 @@ class Executor:
         proc.join()
 
         result = read_json(result_path, default={"status": C.TASK_FAILED, "error": "no result file"})
-        self._complete(task_id, result)
-        self._remove(task_id)
+        if not isinstance(result, dict):
+            result = {"status": C.TASK_FAILED, "error": "invalid result file"}
+        if proc.exitcode not in (0, None):
+            result.setdefault("status", C.TASK_FAILED)
+            result.setdefault("error", f"worker process exited with code {proc.exitcode}")
+        self._complete(execution_id, result)
+        self._remove(execution_id)
 
     # -- reporting to master -----------------------------------------
     def _post(self, path: str, payload: dict) -> None:
@@ -318,29 +371,34 @@ class Executor:
             "worker_id": self.worker_id,
             "job_id": spec["job_id"],
             "task_id": spec["task_id"],
+            "execution_id": spec.get("execution_id", ""),
             "status": C.TASK_RUNNING,
             "progress": round(min(1.0, max(0.0, progress)), 4),
             "records_processed": processed,
             "records_emitted": emitted,
         })
 
-    def _complete(self, task_id: str, result: dict) -> None:
-        handle = self._handles.get(task_id)
+    def _complete(self, execution_id: str, result: dict) -> None:
+        with self._lock:
+            handle = self._handles.get(execution_id)
         spec = handle["spec"] if handle else {}
+        duration_ms = int(now_ms() - handle["started_ms"]) if handle else 0
         self._post("/api/workers/task-complete", {
             "worker_id": self.worker_id,
             "job_id": spec.get("job_id", ""),
-            "task_id": task_id,
+            "task_id": spec.get("task_id", ""),
+            "execution_id": spec.get("execution_id", execution_id),
             "kind": spec.get("kind", ""),
             "status": result.get("status", C.TASK_FAILED),
             "records_processed": result.get("records_processed", 0),
             "records_emitted": result.get("records_emitted", 0),
-            "duration_ms": int((now_ms() - handle["started_ms"]) / 1000) if handle else 0,
+            "duration_ms": duration_ms,
             "partition_sizes": result.get("partition_sizes", {}),
             "results": result.get("results", []),
             "error": result.get("error", ""),
+            "timed_out": bool(result.get("timed_out", False)),
         })
 
-    def _remove(self, task_id: str) -> None:
+    def _remove(self, execution_id: str) -> None:
         with self._lock:
-            self._handles.pop(task_id, None)
+            self._handles.pop(execution_id, None)

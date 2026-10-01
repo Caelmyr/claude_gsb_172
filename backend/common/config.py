@@ -54,7 +54,7 @@ class ClusterConfig:
     shuffle_spill_records: int = 20000           # external-sort spill threshold
     map_parallelism_factor: float = 3.0          # map tasks ~ workers * factor
     reduce_parallelism_factor: float = 2.0
-    scheduler_tick_sec: float = 5.0              # master scheduling loop cadence
+    scheduler_tick_sec: float = 0.5              # master scheduling loop cadence
     metric_interval_sec: float = 2.0             # metric sample cadence
     demo_mode: bool = False                      # simulate work for fast UI demos
     default_input_rows: int = 12000              # generated input size for sample jobs

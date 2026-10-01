@@ -87,6 +87,7 @@ class Task:
     started_ms: int = 0
     finished_ms: int = 0
     last_update_ms: int = 0
+    execution_id: str = ""
     progress: float = 0.0
     records_processed: int = 0
     records_emitted: int = 0

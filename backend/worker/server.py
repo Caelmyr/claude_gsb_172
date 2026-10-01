@@ -60,7 +60,7 @@ class WorkerServer:
         )
         self.heartbeat = HeartbeatThread(
             self.worker_id, self.master_url,
-            self.config.heartbeat_timeout_sec, self._status_payload,
+            self.config.heartbeat_interval_sec, self._status_payload,
         )
         self.client = HttpClient(timeout=5.0, retries=1)
         self.registered = False
@@ -157,7 +157,15 @@ class WorkerServer:
     def _cancel(self):
         body = request.get_json(silent=True) or {}
         task_id = body.get("task_id", "")
-        return jsonify({"cancelled": self.executor.cancel(task_id) if task_id else False})
+        execution_id = body.get("execution_id", "")
+        job_id = body.get("job_id", "")
+        if not task_id and not execution_id:
+            return jsonify({"cancelled": False})
+        return jsonify({
+            "cancelled": self.executor.cancel(
+                task_id, execution_id=execution_id, job_id=job_id,
+            )
+        })
 
     def _get_shuffle(self, job_id: str, task_id: str, partition_name: str):
         index = parse_partition_index(partition_name)
